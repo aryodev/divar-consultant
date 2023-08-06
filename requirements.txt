@@ -1,0 +1,4 @@
+django
+django-import-export
+requests
+notify-py
