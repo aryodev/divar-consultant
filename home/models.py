@@ -14,12 +14,17 @@ class Estate(models.Model):
     consultant = models.ForeignKey(
         'consultant', on_delete=models.CASCADE, related_name='estates', blank=True, null=True, verbose_name='مشاور',)
 
+    agency = models.ForeignKey(
+        'Agency',
+        verbose_name='آژانس املاک',
+        on_delete=models.SET_NULL, related_name='estates', blank=True, null=True)
+
     def __str__(self):
         return f'{self.title} - {self.size}'
 
     class Meta:
-        verbose_name = 'ملک'
-        verbose_name_plural = 'املاک'
+        verbose_name = 'آگهی'
+        verbose_name_plural = 'آگهی ها'
 
 
 class Consultant(models.Model):
@@ -41,11 +46,13 @@ class Consultant(models.Model):
     profile = models.CharField(verbose_name='پروفایل',
                                max_length=10000, blank=True, null=True)
 
+    agencies = models.ManyToManyField('Agency', verbose_name='آزانس املاک')
+
     link = models.URLField(max_length=3000, verbose_name='لینک در دیوار')
     agent = models.CharField(max_length=100, unique=True)
 
     updated = models.DateTimeField(
-        auto_now_add=True, verbose_name='اخرین بروزرسانی اطلاعات')
+        auto_now=True, verbose_name='اخرین بروزرسانی اطلاعات')
 
     def __str__(self):
         return f'{self.name}'
@@ -53,6 +60,7 @@ class Consultant(models.Model):
     class Meta:
         verbose_name = 'مشاور'
         verbose_name_plural = 'مشاورین املاک'
+        ordering = ('-updated',)
 
     def get_estates(self):
         return ' | '.join(i.title for i in self.estates.all())
@@ -71,7 +79,50 @@ class Neighbourhood(models.Model):
 
 
 class SizeClassification(models.Model):
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=100, verbose_name='دسته بندی متراژ')
 
     def __str__(self) -> str:
-        return self.title
+        return f'{self.title}'
+
+
+class Agency(models.Model):
+    title = models.CharField(max_length=1000, blank=True,
+                             null=True, verbose_name='عنوان')
+    link = models.URLField(max_length=2000, unique=True, verbose_name='لینک')
+    consultants = models.ManyToManyField(Consultant, verbose_name='مشاور')
+
+    class Meta:
+        verbose_name = 'اژانس املاک'
+        verbose_name_plural = 'آژانس های املاک'
+
+    def __str__(self):
+        return f"{self.title}"
+
+
+class Operation(models.Model):
+    start_time = models.DateTimeField(
+        null=True, default=False, verbose_name='زمان شروع')
+
+    process_time = models.CharField(
+        max_length=1000, blank=True, null=True, verbose_name='زمان پردازش')
+
+    number_of_consultants = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name='تعداد مشاورین')
+
+    number_of_requests = models.PositiveSmallIntegerField(
+        blank=True, null=True, verbose_name='تعداد درخواست ها')
+
+    error = models.TextField(blank=True, null=True, verbose_name='خطا')
+
+    is_error = models.BooleanField(
+        blank=True, null=True, default=True, verbose_name='بدون خطا')
+
+    message = models.TextField(blank=True, null=True, verbose_name='پیام')
+
+    class Meta:
+        ordering = ('-start_time',)
+        verbose_name = 'عملیات'
+        verbose_name_plural = 'عملیات ها'
+
+    def __str__(self):
+        return f'{self.id}'

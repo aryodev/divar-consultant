@@ -1,79 +1,131 @@
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.views import View
 from requests import Session, get
 from bs4 import BeautifulSoup
 from time import sleep, time
-from json import dump, load, dumps
-from .models import Consultant, Estate, Neighbourhood, SizeClassification
-from notifypy import Notify
+from .models import Consultant, Estate, Neighbourhood, SizeClassification, Agency, Operation
 from shutil import get_terminal_size
 from django.contrib import messages
+from requests.exceptions import ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError
+from random import randint
+from fake_useragent import UserAgent
+from traceback import format_exc
+from datetime import datetime
+from django.utils import timezone
+# from notifypy import Notify
+
+
+def Handler404(request, exception, *args, **kwargs):
+    messages.warning(request, f'404 Not Found in {request.path}', 'warning')
+    return redirect('home:home')
 
 
 class HomeView(View):
 
     def get(self, request, *args, **kwargs):
+        return redirect('admin/')
         return render(request, 'home/home.html')
 
 
 class SearchView(View):
 
     def get(self, request, *args, **kwargs):
-        global time1, session, columns, loop429, number_of_requests
+        global time1, session, columns, loop429, number_of_requests, ua, result_message
         session = Session()
         number_of_requests = 0
         loop429 = 0
         time1 = time()
+        ua = UserAgent()
+        now_datetime = timezone.now()
         columns = get_terminal_size().columns
 
-        print('  Scrapper started  '.center(columns) + '\n\n')
+        result_message = ''
 
-        res = search_in_divar()
+        print('\nScraper started...\n')
 
-        # try:
-        #     res = search_in_divar()
-        # except Exception as e:
-        #     print_exc()
-        #     notification = Notify()
-        #     notification.title = 'Exception in divar_search'
-        #     notification.message = e
-        #     notification.send()
-        #     sleep(100)
+        proxy_list = [
+            '78.38.93.22:3128',
+            '82.102.26.38:8443',
+            '91.107.247.115:4000',
+            '138.199.48.1:8443',
+            '143.244.60.116:8443'
+        ]
+
+        proxies = {
+            'http': 'http://' + proxy_list[randint(0, 4)]
+            # 'http': 'http://82.102.26.38:8443'
+        }
+
+        error = None
+
+        try:
+            res = search_in_divar()
+        except Exception as e:
+            # notification = Notify()
+            # notification.title = 'Exception in divar_search'
+            # notification.message = e
+            # notification.send()
+            error = format_exc()
+            res = []
+            print(error)
+            # raise
 
         process_time = int(time() - time1) // 60
-        print(process_time)
-        process_time = f'{process_time // 60} hours, {process_time % 60} minutes' if process_time > 60 else f'{process_time} minutes'
 
-        print(
-            f'The information of {len(res)} consultants was obtained And Saved.'.center(columns))
-        print(
-            f'Process Time: {process_time}'.center(columns) + '\n')
+        process_time = f'{process_time // 60} ساعت, {process_time % 60} دقیقه' if process_time > 60 else f'{process_time} دقیقه'
 
-        messages.success(
-            request, f'The information of {len(res)} consultants was obtained', 'info')
-        messages.success(
-            request, f'Process Time: {process_time}', 'info')
-        messages.success(
-            request, f'Go to admin panel to view results', 'success')
+        operation = Operation.objects.create(
+            process_time=process_time,
+            number_of_requests=number_of_requests,
+            number_of_consultants=len(res),
+            start_time=now_datetime,
+            message=result_message
+        )
 
-        return render(request, 'home/home.html')
+        if error:
+            operation.error = error
+            operation.is_error = False
+            if result_message:
+                operation.message = result_message
+            operation.save()
+        else:
+            if result_message:
+                operation.message = result_message
+                operation.save()
+
+        return JsonResponse({'message': result_message})
 
 
 def get_res(link):
-    global columns, number_of_requests, loop429
+    global columns, number_of_requests, loop429, result_message
     number_of_requests += 1
-    res = session.get(link)
+
+    try:
+        res = session.get(link, timeout=3)
+    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+        sleep(1)
+        return get_res(link)
+
     columns = get_terminal_size().columns
     print(
-        f' {number_of_requests} requests '.center(columns), end='\r')
+        f'{number_of_requests} requests', end='\r')
 
-    if res.status_code not in (429, 500):
+    if res.status_code not in (429, 500, 501, 502):
         if res.status_code != 200 and res.status_code != 404:
             print('='*90)
             print(res.status_code)
             print(link)
             print('='*90 + '\n')
+
+            result_message += f'''
+            
+            {'='*90}
+            {res.status_code}
+            {link}
+            {'='*90}
+            
+            '''
         loop429 = 0
         return res
     elif res.status_code == 429:
@@ -81,11 +133,12 @@ def get_res(link):
         if loop429 >= 3:
             sleep(1)
         sleep(0.4)
-        print('429 HttpError: too many requests'.center(columns), end='\r')
+        # print('429 HttpError: too many requests'.center(columns), end='\r')
         return get_res(link)
-    elif res.status_code == 500:
-        sleep(1)
-        print('\n500 HttpError: server error')
+    elif res.status_code >= 500:
+        sleep(0.5)
+        # print(f'\n{res.status_code} HttpError: server error {link}')
+
         return get_res(link)
 
 
@@ -96,9 +149,19 @@ def post_res(link, json=None):
     columns = get_terminal_size().columns
 
     print(
-        f' {number_of_requests} requests '.center(columns), end='\r')
+        f'{number_of_requests} requests', end='\r')
 
-    res = session.post(link, json=json) if json else session.post(link)
+    try:
+        res = session.post(link, json=json, timeout=3) if json else session.post(
+            link, timeout=3)
+
+    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+        sleep(1)
+        return post_res(link, json)
+
+    if res.status_code == 429:
+        sleep(0.5)
+        return post_res(link, json)
 
     return res
 
@@ -108,71 +171,61 @@ def get_ads_of_a_neighbourhood():
         "page": 0,
         "json_schema": {
             "category": {"value": "real-estate"},
-            # "districts": {"vacancies": ["907", "40", "654", "87"]},
-            "districts": {
-                "vacancies":
-                    [
-                        "40", "1024", "266", "360", "42", "43", "46", "47", "48", "52", "53", "54", "55", "56", "61", "62", "63", "64", "65", "66", "67", "68", "70", "71", "85", "931", "943"
-                    ]
-            },
             "sort": {"value": "sort_date"},
-            "cities": ["1"]
+            "cities": ["1"],
+            "user_type": {"value": "مشاور املاک"},
         },
         # "last-post-date": 1691301438332056
     }
+
     suggestions = []
-    for i in range(1):
+    for i in range(99):
+        global result_message
         data['page'] = i
 
         res = post_res(
             'https://api.divar.ir/v8/web-search/1/real-estate', json=data)
 
-        if res.status_code == 429:
-            sleep(1)
-            res = post_res(
-                'https://api.divar.ir/v8/web-search/1/real-estate', json=data)
         try:
             json_res = res.json()
         except Exception as e:
             if str(e) == '[Errno Expecting value] : 0':
-                print('res.text in None')
-                print(res.status_code)
+                # print('res.text in None')
+                # print(res.status_code)
                 continue
             print(res.text)
             print(data['page'])
-            raise
+            result_message += f'''
+            
+            {res.text}
+            {data['page']}
+            
+            '''
 
         post_list = json_res['web_widgets']['post_list']
         last_post_date = json_res['last_post_date']
 
         for item in post_list:
-            if not item['data'].get('action'):
-                continue
             try:
                 token = item['data']['token']
             except:
                 continue
-                print(item)
-                print(post_list)
-                with open('debug.json', 'w') as file:
-                    dump({'data': post_list}, file, indent=2)
-                raise
 
             link = 'https://divar.ir/v/' + token
             if link not in suggestions:
                 suggestions.append(link)
+
         data['last_post_date'] = last_post_date
 
     suggestions = get_good_urls(suggestions)
 
-    print(f'The Link of {len(suggestions)} ads obtained'.center(columns))
+    print(f'The Link of {len(suggestions)} ads obtained')
 
     return suggestions
 
 
 def get_consultant_link_from_ads(ads):
     result = []
-
     for link in ads:
         res = get_res(link)
 
@@ -184,23 +237,29 @@ def get_consultant_link_from_ads(ads):
             if link_of_consultant not in result:
                 result.append(link_of_consultant)
 
-    print(f'The Link of {len(result)} consultants obtained'.center(
-        columns) + '\n')
-    print(f'Start to get consultants information...'.center(columns) + '\n')
+    print(f'The Link of {len(result)} consultants obtained' + '\n')
+    print(f'Start to get consultants information...' + '\n')
 
     return result
 
 
 def get_consultant_information(links):
     global number_of_requests
-    # links = ['https://divar.ir/real-estate/agencies/agent_rPSROq3k']
+
     info = {}
     for link in links:
         url = 'https://api.divar.ir/v8/real-estate/w/agency-public-view'
 
         agent = link.split('/')[-1]
-        session.options(url, headers={
-                        'Access-Control-Request-Headers': 'content-type', 'Access-Control-Request-Method': 'POST'})
+
+        def res_options():
+            try:
+                session.options(url, headers={
+                    'Access-Control-Request-Headers': 'content-type', 'Access-Control-Request-Method': 'POST'},
+                    timeout=3)
+            except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+                sleep(1)
+                return res_options()
         number_of_requests += 1
 
         res = post_res(url, json={'request_data': {'slug': agent}, 'specification': {
@@ -236,8 +295,8 @@ def get_consultant_information(links):
                         info[agent]['profile'] = item['data']['text']
 
                 elif item.get('widget_type') == 'EVALUATION_ROW':
-                    info[agent]['revenue'] = float(
-                        item['data']['indicator_text'].replace('٫', '.'))
+                    info[agent]['revenue'] = convert_number_to_english_float(
+                        item['data']['indicator_text'])
 
         info[agent]['link'] = link
 
@@ -248,7 +307,7 @@ def get_consultant_information(links):
         submit_consultant_data_to_db(agent, info[agent])
 
         print(
-            f'{links.index(link) + 1} - {info[agent]["name"]} - obtained'.center(columns))
+            f'{links.index(link) + 1} - {info[agent]["name"]} - obtained')
 
     return info
 
@@ -294,8 +353,6 @@ def get_ads_of_a_consultant(agent, last_item_identifier=None):
         if action:
             link = 'https://divar.ir/v/' + action['payload']['token']
             ads.append(link)
-        else:
-            print(action)
 
     if noa == 24:
         sub_last_item_identifier = res_json['page']['infinite_scroll_response']['last_item_identifier']
@@ -307,6 +364,7 @@ def get_ads_of_a_consultant(agent, last_item_identifier=None):
 
 
 def get_ads_information(links):
+    global result_message
     new_links = get_good_urls(links)
 
     result = {}
@@ -332,6 +390,29 @@ def get_ads_information(links):
 
         size = convert_number_to_english(
             size.find_all('span')[-1].text) if size else None
+
+        agency = content.find_all(
+            'a', class_='kt-unexpandable-row__action kt-text-truncate')
+
+        if agency:
+            if len(agency) == 2:
+                agency = agency[0]
+                result[ads_agent]['agency'] = agency.text
+                result[ads_agent]['agency_link'] = 'https://divar.ir' + \
+                    agency.attrs['href']
+
+            elif len(agency) > 2 and agency[0].text == 'نمایش':
+                agency = agency[1]
+                result[ads_agent]['agency'] = agency.text
+                result[ads_agent]['agency_link'] = 'https://divar.ir' + \
+                    agency.attrs['href']
+
+            elif len(agency) > 2 and agency[0].text != 'نمایش':
+                print(
+                    f'len of consultant and agency grater than 2\nlink: {link}\nagency: {agency}')
+                result_message += f'''
+                len of consultant and agency grater than 2\nlink: {link}\nagency: {agency}
+                '''.strip()
 
         if not size:
             var = content.find(
@@ -366,11 +447,11 @@ def get_good_urls(links):
             yield l[i:i + n]
 
     chunk_token = divide_chunks(tokens, 50)
+
     result = []
     for tokens in chunk_token:
         if tokens:
             json_res = convert_response_to_json(tokens)
-            # print(dumps(json_res))
 
             result.extend(json_res['widget_list'])
 
@@ -392,14 +473,11 @@ def convert_response_to_json(tokens):
         return json_res
     except Exception:
         sleep(1)
-        # print(f'we have error in get posts')
         return convert_response_to_json(tokens)
 
 
 def retry_request(link):
-
     res = get_res(link)
-
     if res.status_code == 404:
         return 404
 
@@ -413,7 +491,6 @@ def retry_request(link):
         return res
     else:
         sleep(0.5)
-        # print(f'we have error in link: {link}')
 
         return retry_request(link)
 
@@ -430,11 +507,15 @@ def submit_consultant_data_to_db(agent, info):
     consultant.number_of_ads = info.get('number_of_ads')
     consultant.link = info.get('link')
     consultant.save()
+
     consultant.estates.all().delete()
 
     if info.get('ads'):
+
         estates = []
         neighbourhoods = []
+        agencies = []
+
         for k1, v1 in info['ads'].items():
             neighbourhood = Neighbourhood.objects.get_or_create(
                 title=v1['neighbourhood'])[0]
@@ -450,14 +531,33 @@ def submit_consultant_data_to_db(agent, info):
             estate.save()
             estates.append(estate)
 
+            if v1.get('agency'):
+                agency_list = Agency.objects.get_or_create(
+                    link=v1.get('agency_link'),
+                )
+                agency = agency_list[0]
+                if agency_list[1]:
+                    agency.title = v1['agency']
+                    agency.save()
+                if agency not in agencies:
+                    agencies.append(agency)
+                estate.agency = agency
+                estate.save()
+
+                agency.consultants.add(consultant)
+
+        consultant.agencies.add(*agencies)
         consultant.scope_of_activity.add(*neighbourhoods)
-        # consultant.scope_of_activity_string = ', '.join(
-        #     [obj.title for obj in consultant.scope_of_activity.all()])
-        # consultant.save()
-        size_classification = SizeClassification.objects.all().order_by('id')
+
+        size_classification = SizeClassification.objects.filter(
+            id__lte=3).order_by('id')
+
         obj0 = obj1 = obj2 = last = False
 
         for estate in estates:
+            if not estate.size:
+                continue
+
             if 0 < estate.size <= 150 and not obj0:
                 consultant.size_classification.add(size_classification[0])
                 obj0 = True
@@ -478,6 +578,7 @@ def submit_consultant_data_to_db(agent, info):
                 last = True
             if obj0 and obj1 and obj2 and last:
                 break
+        consultant.save()
 
 
 def search_in_divar():
@@ -486,7 +587,7 @@ def search_in_divar():
     number_of_requests = 0
 
     session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+        'User-Agent': ua.random,
         'Origin': 'https://divar.ir',
         'Referer': 'https://divar.ir/',
     })
@@ -496,18 +597,36 @@ def search_in_divar():
     links = get_consultant_link_from_ads(ads)
     consultant_info = get_consultant_information(links)
 
-    print(f"Number of requests: {number_of_requests}".center(columns) + '\n')
+    print(f"Number of requests: {number_of_requests}" + '\n')
 
     return consultant_info
 
 
 def convert_number_to_english(strIn: str):
+    global result_message
     P2E_map = {'۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5',
-               '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۰': '1'}
+               '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۰': '1',
+               '،': '.', '.': '.', '٫': '.'}
 
     a = map(lambda ch: P2E_map[ch] if ch in P2E_map else '', strIn)
     try:
         return int(''.join(list(a)))
     except Exception as e:
         print('Error --> ', e)
+        result_message += f'''Error --> {e}'''
+        return ''.join(list(a))
+
+
+def convert_number_to_english_float(strIn: str):
+    global result_message
+    P2E_map = {'۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5',
+               '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۰': '1',
+               '،': '.', '.': '.', '٫': '.'}
+
+    a = map(lambda ch: P2E_map[ch] if ch in P2E_map else '', strIn)
+    try:
+        return float(''.join(list(a)))
+    except Exception as e:
+        print('Error --> ', e)
+        result_message += f'''Error --> {e}'''
         return ''.join(list(a))
