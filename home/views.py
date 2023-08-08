@@ -31,7 +31,7 @@ class HomeView(View):
 class SearchView(View):
 
     def get(self, request, *args, **kwargs):
-        global time1, session, columns, loop429, number_of_requests, ua, result_message
+        global time1, session, columns, loop429, number_of_requests, ua, result_message, input_page
         session = Session()
         number_of_requests = 0
         loop429 = 0
@@ -39,6 +39,16 @@ class SearchView(View):
         ua = UserAgent()
         now_datetime = timezone.now()
         columns = get_terminal_size().columns
+        try:
+            input_page = int(request.GET.get('page'))
+
+        except:
+            input_page = -1
+
+        if 0 < input_page <= 99:
+            pass
+        else:
+            input_page = None
 
         result_message = ''
 
@@ -179,7 +189,12 @@ def get_ads_of_a_neighbourhood():
     }
 
     suggestions = []
-    for i in range(99):
+
+    page = 99
+    if input_page:
+        page = input_page
+    print(input_page)
+    for i in range(page):
         global result_message
         data['page'] = i
 
