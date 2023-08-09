@@ -33,9 +33,9 @@ class HomeView(View):
 
     def get(self, request, *args, **kwargs):
         # return redirect('admin/')
-        command = ['curl', 'localhost:8000/unlimited-search/?stop=true']
+        command = ['curl', 'localhost:8000/unlimited-search/?stop=status']
 
-        res = run(command, capture_output=True, text=True)
+        res = run(command, capture_output=True, text=True, timeout=0.2)
         res = loads(res.stdout)
 
         if res['message'] == 'After Scrap currently page stopped':
@@ -155,10 +155,16 @@ class UnlimitedSearchView(View):
     def get(self, request, *args, **kwargs):
         global time1, session, loop429, number_of_requests, ua, result_message, input_page, start_to_scrap_unlimited, stop
 
-        if request.GET.get('stop'):
+        if request.GET.get('stop') == 'true':
             try:
                 stop = stop
                 stop = True
+                return JsonResponse({'message': 'After Scrap currently page stopped'})
+            except NameError:
+                return JsonResponse({'message': 'The Program Does not scrap now'})
+        elif request.GET.get('stop'):
+            try:
+                stop = stop
                 return JsonResponse({'message': 'After Scrap currently page stopped'})
             except NameError:
                 return JsonResponse({'message': 'The Program Does not scrap now'})
@@ -199,7 +205,7 @@ class UnlimitedSearchView(View):
         operation = Operation.objects.create(
             process_time=process_time,
             number_of_requests=number_of_requests,
-            number_of_consultants=len(res),
+            number_of_consultants=None,
             start_time=now_datetime,
         )
 
