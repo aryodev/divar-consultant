@@ -5,13 +5,15 @@ from requests import Session, get
 from bs4 import BeautifulSoup
 from time import sleep, time
 from .models import Consultant, Estate, Neighbourhood, SizeClassification, Agency, Operation
-from shutil import get_terminal_size
 from django.contrib import messages
 from requests.exceptions import ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError
 from random import randint
 from fake_useragent import UserAgent
 from traceback import format_exc
 from django.utils import timezone
+from subprocess import run, TimeoutExpired
+from json import loads
+
 
 sc = SizeClassification.objects.filter(id__lte=3)
 if sc.count() != 3:
@@ -30,8 +32,20 @@ def Handler404(request, exception, *args, **kwargs):
 class HomeView(View):
 
     def get(self, request, *args, **kwargs):
-        return redirect('admin/')
-        return render(request, 'home/home.html')
+        # return redirect('admin/')
+        command = ['curl', 'localhost:8000/unlimited-search/?stop=true']
+
+        res = run(command, capture_output=True, text=True)
+        res = loads(res.stdout)
+
+        if res['message'] == 'After Scrap currently page stopped':
+            unlimited_status = 'Unlimited Scrap: Already Running'
+        elif res['message'] == 'The Program Does not scrap now':
+            unlimited_status = 'Unlimited Scrap: Does Not Running'
+        else:
+            unlimited_status = 'We have A Error, please contact to owner'
+
+        return render(request, 'home/home.html', {'unlimited_status': unlimited_status})
 
 
 class SearchView(View):
@@ -44,7 +58,6 @@ class SearchView(View):
         time1 = time()
         ua = UserAgent()
         now_datetime = timezone.now()
-        columns = get_terminal_size().columns
 
         try:
             if start_to_scrap:
@@ -117,6 +130,94 @@ class SearchView(View):
         return JsonResponse({'message': result_message})
 
 
+class EnterSearchCommand(View):
+    def get(self, request, *args, **kwargs):
+        command = ['curl', 'localhost:8000/unlimited-search/']
+        try:
+            res = run(command, timeout=0.1)
+        except TimeoutExpired:
+            messages.success(request, 'Scraping Started.')
+            return redirect('home:home')
+
+
+class EnterStopSearchCommand(View):
+    def get(self, request, *args, **kwargs):
+        command = ['curl', 'localhost:8000/unlimited-search/?stop=true']
+
+        res = run(command, capture_output=True, text=True)
+        res = loads(res.stdout)
+
+        messages.success(request, res['message'])
+        return redirect('home:home')
+
+
+class UnlimitedSearchView(View):
+    def get(self, request, *args, **kwargs):
+        global time1, session, loop429, number_of_requests, ua, result_message, input_page, start_to_scrap_unlimited, stop
+
+        if request.GET.get('stop'):
+            try:
+                stop = stop
+                stop = True
+                return JsonResponse({'message': 'After Scrap currently page stopped'})
+            except NameError:
+                return JsonResponse({'message': 'The Program Does not scrap now'})
+
+        try:
+            if start_to_scrap_unlimited:
+                return JsonResponse({'message': f'The Program is currently scraping Page {currently_page_number}'})
+        except NameError:
+            start_to_scrap_unlimited = 1
+
+        session = Session()
+        ua = UserAgent()
+
+        number_of_requests = 0
+        loop429 = 0
+
+        time1 = time()
+        now_datetime = timezone.now()
+
+        result_message = ''
+
+        print('\nScraper started...\n')
+
+        error = None
+
+        try:
+            res = unlimited_search_in_divar()
+        except Exception as e:
+            error = format_exc()
+            res = []
+            # print(error)
+            # raise
+
+        process_time = int(time() - time1) // 60
+
+        process_time = f'{process_time // 60} ساعت, {process_time % 60} دقیقه' if process_time > 60 else f'{process_time} دقیقه'
+
+        operation = Operation.objects.create(
+            process_time=process_time,
+            number_of_requests=number_of_requests,
+            number_of_consultants=len(res),
+            start_time=now_datetime,
+        )
+
+        if error:
+            operation.error = error
+            operation.is_error = False
+            if result_message:
+                operation.message = result_message
+            operation.save()
+        else:
+            if result_message:
+                operation.message = result_message
+                operation.save()
+
+        del start_to_scrap_unlimited
+        return JsonResponse({'message': result_message})
+
+
 def get_res(link):
     global columns, number_of_requests, loop429, result_message
     number_of_requests += 1
@@ -127,7 +228,6 @@ def get_res(link):
         sleep(1)
         return get_res(link)
 
-    columns = get_terminal_size().columns
     print(
         f'{number_of_requests} requests', end='\r')
 
@@ -166,7 +266,6 @@ def post_res(link, json=None):
     global number_of_requests, columns
 
     number_of_requests += 1
-    columns = get_terminal_size().columns
 
     print(
         f'{number_of_requests} requests', end='\r')
@@ -205,6 +304,7 @@ def get_ads_of_a_neighbourhood():
     if input_page:
         page = input_page
         print(f'scrap {page} Page')
+
     for i in range(page):
         global result_message
         data['page'] = i
@@ -250,6 +350,80 @@ def get_ads_of_a_neighbourhood():
     return suggestions
 
 
+def unlimited_get_ads_of_a_neighbourhood():
+    global stop, currently_page_number
+
+    data = {
+        "page": 0,
+        "json_schema": {
+            "category": {"value": "real-estate"},
+            "sort": {"value": "sort_date"},
+            "cities": ["1"],
+            "user_type": {"value": "مشاور املاک"},
+        },
+        # "last-post-date": 1691301438332056
+    }
+
+    suggestions = []
+
+    stop = False
+    currently_page_number = 0
+
+    while not stop:
+        global result_message
+        data['page'] = currently_page_number
+
+        res = post_res(
+            'https://api.divar.ir/v8/web-search/1/real-estate', json=data)
+
+        try:
+            json_res = res.json()
+        except Exception as e:
+            if str(e) == '[Errno Expecting value] : 0':
+                # print('res.text in None')
+                # print(res.status_code)
+                continue
+            print(res.text)
+            print(data['page'])
+            result_message += f'''
+            
+            {res.text}
+            {data['page']}
+            
+            '''
+
+        post_list = json_res['web_widgets']['post_list']
+        last_post_date = json_res['last_post_date']
+
+        for item in post_list:
+            try:
+                token = item['data']['token']
+            except:
+                continue
+
+            link = 'https://divar.ir/v/' + token
+            if link not in suggestions:
+                suggestions.append(link)
+
+        data['last_post_date'] = last_post_date
+        currently_page_number += 1
+
+        suggestions = get_good_urls(suggestions)
+        print(f'Page {currently_page_number}: suggestions were taken')
+
+        consultants_links = unlimited_get_consultant_link_from_ads(suggestions)
+        print(
+            f'Page {currently_page_number}: {len(consultants_links)} consultants links obtained' + '\n')
+
+        consultants_information = get_consultant_information(consultants_links)
+        print(
+            f'Page {currently_page_number}: This Page scrap completed' + '\n')
+
+        suggestions = suggestions.clear()
+
+    return True
+
+
 def get_consultant_link_from_ads(ads):
 
     result = []
@@ -266,6 +440,23 @@ def get_consultant_link_from_ads(ads):
 
     print(f'The Link of {len(result)} consultants obtained' + '\n')
     print(f'Start to get consultants information...' + '\n')
+
+    return result
+
+
+def unlimited_get_consultant_link_from_ads(ads):
+
+    result = []
+    for link in ads:
+        res = get_res(link)
+
+        data = BeautifulSoup(res.text, 'html.parser')
+        name = data.find_all(
+            'a', class_='kt-unexpandable-row__action kt-text-truncate')
+        if name:
+            link_of_consultant = 'https://divar.ir' + name[-1].attrs['href']
+            if link_of_consultant not in result:
+                result.append(link_of_consultant)
 
     return result
 
@@ -287,6 +478,9 @@ def get_consultant_information(links):
             except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
                 sleep(1)
                 return res_options()
+
+        res_options()
+
         number_of_requests += 1
 
         res = post_res(url, json={'request_data': {'slug': agent}, 'specification': {
@@ -334,8 +528,9 @@ def get_consultant_information(links):
         submit_consultant_data_to_db(agent, info[agent])
 
         print(
-            f'{links.index(link) + 1} - {info[agent]["name"]} - obtained')
+            f'{links.index(link) + 1} - {info[agent]["name"]} - Saved in DB')
 
+    # return True
     return info
 
 
@@ -628,6 +823,27 @@ def search_in_divar():
 
     return consultant_info
 
+
+def unlimited_search_in_divar():
+    global number_of_requests
+
+    number_of_requests = 0
+
+    session.headers.update({
+        'User-Agent': ua.random,
+        'Origin': 'https://divar.ir',
+        'Referer': 'https://divar.ir/',
+    })
+    session.cookies.update({'pwa-banner-closed': 'true'})
+
+    ads = unlimited_get_ads_of_a_neighbourhood()
+    print('kaf;jsdfkj;adsfj;alksdjf;alkdjf;alkdjf;lsdjf;lk')
+    print(f"Number of requests: {number_of_requests}" + '\n')
+
+    return True
+
+
+# Thread party functions
 
 def convert_number_to_english(strIn: str):
     global result_message

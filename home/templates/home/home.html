@@ -2,10 +2,13 @@
 
 
 {% block content %}
-    <h5>It takes about 3 hours !</h5>
-    <h5>You can view operation in the terminal</h5>
-    <h5 class="text-danger">Please don't close the page after click to complete the operation</h5>
+
+    <h4 class="text-secondary">{{unlimited_status}}</h4>
     <br>
-    <a href="/search" class="btn btn-success">Start Scrapper</a>
+
+    <br>
+    <a href="/unlimited-search-start/" class="btn btn-success">Start Scrapper</a>
+    <br><br>
+    <a href="/unlimited-search-stop/" class="btn btn-danger">Stop Scrapper</a>
 {% endblock content %}
     
