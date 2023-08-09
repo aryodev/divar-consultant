@@ -135,7 +135,7 @@ class EnterSearchCommand(View):
     def get(self, request, *args, **kwargs):
         command = ['curl', 'localhost:8000/unlimited-search/']
         try:
-            res = run(command, timeout=0.1, capture_output=True, text=True)
+            res = run(command, timeout=0.2, capture_output=True, text=True)
         except TimeoutExpired:
             messages.success(request, 'Scraping Started.')
             return redirect('home:home')
@@ -163,6 +163,8 @@ class EnterStopSearchCommand(View):
 class UnlimitedSearchView(View):
     def get(self, request, *args, **kwargs):
         global time1, session, loop429, number_of_requests, ua, result_message, input_page, start_to_scrap_unlimited, stop, process_id
+
+        stop = False
 
         if request.GET.get('stop') == 'true':
             try:
