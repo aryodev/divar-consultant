@@ -164,8 +164,6 @@ class UnlimitedSearchView(View):
     def get(self, request, *args, **kwargs):
         global time1, session, loop429, number_of_requests, ua, result_message, input_page, start_to_scrap_unlimited, stop, process_id
 
-        stop = False
-
         if request.GET.get('stop') == 'true':
             try:
                 stop = stop
@@ -182,10 +180,13 @@ class UnlimitedSearchView(View):
 
         try:
             if start_to_scrap_unlimited:
+                stop = False
                 return JsonResponse({'message': f'The Program is currently scraping Page {currently_page_number}'})
         except NameError:
-            print('except name error')
+
             start_to_scrap_unlimited = 1
+
+        stop = False
 
         session = Session()
         ua = UserAgent()
@@ -441,7 +442,6 @@ def unlimited_get_ads_of_a_neighbourhood():
             f'Page {currently_page_number}: scrap completed' + '\n')
 
         suggestions.clear()
-        print(stop)
 
     return True
 
@@ -859,7 +859,7 @@ def unlimited_search_in_divar():
     session.cookies.update({'pwa-banner-closed': 'true'})
 
     ads = unlimited_get_ads_of_a_neighbourhood()
-    print('kaf;jsdfkj;adsfj;alksdjf;alkdjf;alkdjf;lsdjf;lk')
+
     print(f"Number of requests: {number_of_requests}" + '\n')
 
     return True
@@ -870,8 +870,8 @@ def unlimited_search_in_divar():
 def convert_number_to_english(strIn: str):
     global result_message
     P2E_map = {'۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5',
-               '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۰': '1',
-               '،': '.', '.': '.', '٫': '.'}
+               '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۱': '1',
+               "۰": "0", '،': '.'}
 
     a = map(lambda ch: P2E_map[ch] if ch in P2E_map else '', strIn)
     try:
@@ -885,8 +885,8 @@ def convert_number_to_english(strIn: str):
 def convert_number_to_english_float(strIn: str):
     global result_message
     P2E_map = {'۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5',
-               '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۰': '1',
-               '،': '.', '.': '.', '٫': '.'}
+               '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۱': '1',
+               "۰": "0", '،': '.', '.': '.', '٫': '.'}
 
     a = map(lambda ch: P2E_map[ch] if ch in P2E_map else '', strIn)
     try:
