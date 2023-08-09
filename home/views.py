@@ -617,7 +617,7 @@ def get_ads_information(links):
             'a', class_='kt-unexpandable-row__action kt-text-truncate')
 
         if agency:
-            if len(agency) == 2:
+            if len(agency) == 2 and agency[0] != 'نمایش':
                 agency = agency[0]
                 result[ads_agent]['agency'] = agency.text
                 result[ads_agent]['agency_link'] = 'https://divar.ir' + \
