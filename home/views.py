@@ -12,11 +12,9 @@ from random import randint
 from fake_useragent import UserAgent
 from traceback import format_exc
 from django.utils import timezone
-# from notifypy import Notify
 
 sc = SizeClassification.objects.filter(id__lte=3)
 if sc.count() != 3:
-    print(sc)
     SizeClassification.objects.create(title='0 تا 150 متر')
     SizeClassification.objects.create(title='150 تا 250 متر')
     SizeClassification.objects.create(title='250 تا 500 متر')
@@ -53,7 +51,7 @@ class SearchView(View):
         except:
             input_page = -1
 
-        if 0 < input_page <= 99:
+        if 0 < input_page <= 199:
             pass
         else:
             input_page = None
@@ -80,13 +78,9 @@ class SearchView(View):
         try:
             res = search_in_divar()
         except Exception as e:
-            # notification = Notify()
-            # notification.title = 'Exception in divar_search'
-            # notification.message = e
-            # notification.send()
             error = format_exc()
             res = []
-            print(error)
+            # print(error)
             # raise
 
         process_time = int(time() - time1) // 60
@@ -98,7 +92,6 @@ class SearchView(View):
             number_of_requests=number_of_requests,
             number_of_consultants=len(res),
             start_time=now_datetime,
-            message=result_message
         )
 
         if error:

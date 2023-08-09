@@ -1,7 +1,6 @@
 Django==4.2.4
 django-import-export==3.2.0
 requests==2.31.0
-notify-py==0.3.42
 beautifulsoup4==4.12.2
 fake-useragent==1.2.1
 gunicorn==20.1.0
