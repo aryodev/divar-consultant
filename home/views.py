@@ -37,7 +37,7 @@ class HomeView(View):
 class SearchView(View):
 
     def get(self, request, *args, **kwargs):
-        global time1, session, columns, loop429, number_of_requests, ua, result_message, input_page
+        global time1, session, columns, loop429, number_of_requests, ua, result_message, input_page, start_to_scrap
         session = Session()
         number_of_requests = 0
         loop429 = 0
@@ -45,6 +45,13 @@ class SearchView(View):
         ua = UserAgent()
         now_datetime = timezone.now()
         columns = get_terminal_size().columns
+
+        try:
+            if start_to_scrap:
+                return JsonResponse({'message': 'The Program is currently scraping'})
+        except NameError:
+            start_to_scrap = 1
+
         try:
             input_page = int(request.GET.get('page'))
 
@@ -104,6 +111,8 @@ class SearchView(View):
             if result_message:
                 operation.message = result_message
                 operation.save()
+
+        del start_to_scrap
 
         return JsonResponse({'message': result_message})
 
