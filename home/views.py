@@ -13,6 +13,7 @@ from traceback import format_exc
 from django.utils import timezone
 from subprocess import run, TimeoutExpired
 from json import loads
+from random import randint
 
 
 sc = SizeClassification.objects.filter(id__lte=3)
@@ -134,9 +135,17 @@ class EnterSearchCommand(View):
     def get(self, request, *args, **kwargs):
         command = ['curl', 'localhost:8000/unlimited-search/']
         try:
-            res = run(command, timeout=0.1)
+            res = run(command, timeout=0.1, capture_output=True, text=True)
         except TimeoutExpired:
             messages.success(request, 'Scraping Started.')
+            return redirect('home:home')
+
+        if 'The Program is currently scraping Page' in res.stdout:
+            message = loads(res.stdout)['message']
+            messages.success(request, message)
+            return redirect('home:home')
+        else:
+            messages.error(request, f'we have a error {res.stdout}')
             return redirect('home:home')
 
 
@@ -153,7 +162,7 @@ class EnterStopSearchCommand(View):
 
 class UnlimitedSearchView(View):
     def get(self, request, *args, **kwargs):
-        global time1, session, loop429, number_of_requests, ua, result_message, input_page, start_to_scrap_unlimited, stop
+        global time1, session, loop429, number_of_requests, ua, result_message, input_page, start_to_scrap_unlimited, stop, process_id
 
         if request.GET.get('stop') == 'true':
             try:
@@ -173,6 +182,7 @@ class UnlimitedSearchView(View):
             if start_to_scrap_unlimited:
                 return JsonResponse({'message': f'The Program is currently scraping Page {currently_page_number}'})
         except NameError:
+            print('except name error')
             start_to_scrap_unlimited = 1
 
         session = Session()
@@ -205,7 +215,7 @@ class UnlimitedSearchView(View):
         operation = Operation.objects.create(
             process_time=process_time,
             number_of_requests=number_of_requests,
-            number_of_consultants=None,
+            number_of_consultants=number_of_consultants,
             start_time=now_datetime,
         )
 
@@ -357,7 +367,7 @@ def get_ads_of_a_neighbourhood():
 
 
 def unlimited_get_ads_of_a_neighbourhood():
-    global stop, currently_page_number
+    global stop, currently_page_number, result_message, number_of_consultants
 
     data = {
         "page": 0,
@@ -375,8 +385,10 @@ def unlimited_get_ads_of_a_neighbourhood():
     stop = False
     currently_page_number = 0
 
+    number_of_consultants = 0
+
     while not stop:
-        global result_message
+
         data['page'] = currently_page_number
 
         res = post_res(
@@ -418,14 +430,16 @@ def unlimited_get_ads_of_a_neighbourhood():
         print(f'Page {currently_page_number}: suggestions were taken')
 
         consultants_links = unlimited_get_consultant_link_from_ads(suggestions)
+        number_of_consultants += len(consultants_links)
         print(
             f'Page {currently_page_number}: {len(consultants_links)} consultants links obtained' + '\n')
 
         consultants_information = get_consultant_information(consultants_links)
         print(
-            f'Page {currently_page_number}: This Page scrap completed' + '\n')
+            f'Page {currently_page_number}: scrap completed' + '\n')
 
-        suggestions = suggestions.clear()
+        suggestions.clear()
+        print(stop)
 
     return True
 
