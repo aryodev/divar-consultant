@@ -11,9 +11,17 @@ from requests.exceptions import ConnectTimeout, Timeout, ReadTimeout, Connection
 from random import randint
 from fake_useragent import UserAgent
 from traceback import format_exc
-from datetime import datetime
 from django.utils import timezone
 # from notifypy import Notify
+
+sc = SizeClassification.objects.filter(id__lte=3)
+if sc.count() != 3:
+    print(sc)
+    SizeClassification.objects.create(title='0 تا 150 متر')
+    SizeClassification.objects.create(title='150 تا 250 متر')
+    SizeClassification.objects.create(title='250 تا 500 متر')
+else:
+    pass
 
 
 def Handler404(request, exception, *args, **kwargs):
@@ -177,6 +185,7 @@ def post_res(link, json=None):
 
 
 def get_ads_of_a_neighbourhood():
+
     data = {
         "page": 0,
         "json_schema": {
@@ -193,7 +202,7 @@ def get_ads_of_a_neighbourhood():
     page = 99
     if input_page:
         page = input_page
-    print(input_page)
+        print(f'scrap {page} Page')
     for i in range(page):
         global result_message
         data['page'] = i
@@ -240,6 +249,7 @@ def get_ads_of_a_neighbourhood():
 
 
 def get_consultant_link_from_ads(ads):
+
     result = []
     for link in ads:
         res = get_res(link)

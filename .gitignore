@@ -1,4 +1,5 @@
 divar.html
+db.sqlite3
 # Django #
 *.log
 *.pot
