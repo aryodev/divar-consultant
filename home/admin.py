@@ -56,9 +56,9 @@ class OperationAdmin(admin.ModelAdmin):
                        'number_of_consultants', 'is_error', 'error', 'message')
 
 
-@admin.register(SizeClassification)
-class SizeClassificationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title')
+# @admin.register(SizeClassification)
+# class SizeClassificationAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'title')
 
 
 class ConsultantInline(admin.StackedInline):
