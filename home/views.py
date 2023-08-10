@@ -233,7 +233,7 @@ class UnlimitedSearchView(View):
                 operation.message = result_message
                 operation.save()
 
-        del start_to_scrap_unlimited
+        del start_to_scrap_unlimited, stop
         return JsonResponse({'message': result_message})
 
 
@@ -877,7 +877,7 @@ def convert_number_to_english(strIn: str):
     try:
         return int(''.join(list(a)))
     except Exception as e:
-        print('Error --> ', e)
+        print('Error int --> ', e)
         result_message += f'''Error --> {e}'''
         return ''.join(list(a))
 
@@ -892,6 +892,6 @@ def convert_number_to_english_float(strIn: str):
     try:
         return float(''.join(list(a)))
     except Exception as e:
-        print('Error --> ', e)
+        print('Error float --> ', e)
         result_message += f'''Error --> {e}'''
         return ''.join(list(a))
