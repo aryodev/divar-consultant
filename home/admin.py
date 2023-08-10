@@ -30,7 +30,6 @@ def get_app_list(self, request, app_label=None):
     # Sort the models alphabetically within each app.
     for app in app_list:
         app["models"].sort(key=lambda x: x["name"])
-
     try:
         models = app_list[0]['models']
         new_models_list = [models[4], models[0],
@@ -154,7 +153,10 @@ class ConsultantSizeFilter(SimpleListFilter):
 
 class EstateInline(admin.StackedInline):
     model = Estate
-    readonly_fields = ('title', 'size', 'link', 'neighbourhood', 'consultant')
+    readonly_fields = ('title', 'size', 'link',
+                       'neighbourhood', 'consultant', 'agency')
+    raw_id_fields = ('neighbourhood', 'consultant', 'agency')
+    list_per_page = 10
     show_change_link = True
     extra = 0
 
@@ -205,8 +207,13 @@ class EstateAdmin(admin.ModelAdmin):
 @admin.register(Neighbourhood)
 class NeighbourhoodAdmin(admin.ModelAdmin):
     search_fields = ('title', )
-    list_display = ('title',)
+    list_display = ('title', 'get_number_of_estates')
     inlines = (EstateInline,)
+
+    def get_number_of_estates(self, obj):
+        return obj.estates.count()
+
+    get_number_of_estates.short_description = 'تعداد اگهی ها'
 
 
 @admin.register(Agency)
