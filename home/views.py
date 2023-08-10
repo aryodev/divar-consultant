@@ -871,7 +871,7 @@ def convert_number_to_english(strIn: str):
     global result_message
     P2E_map = {'۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5',
                '۶': '6', '۷': '7', '۸': '8', '۹': '9', '۱': '1',
-               "۰": "0", '،': '.'}
+               "۰": "0", }
 
     a = map(lambda ch: P2E_map[ch] if ch in P2E_map else '', strIn)
     try:
