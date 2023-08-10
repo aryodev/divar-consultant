@@ -7,7 +7,7 @@ from django.contrib.admin import SimpleListFilter, AdminSite
 from django.db.models import Q
 from import_export.admin import ExportActionMixin
 from .resources import ConsultantResource
-
+from django_admin_inline_paginator.admin import TabularInlinePaginated
 
 admin.site.unregister(Group)
 admin.site.unregister(User)
@@ -151,12 +151,12 @@ class ConsultantSizeFilter(SimpleListFilter):
         return queryset
 
 
-class EstateInline(admin.StackedInline):
+class EstateInline(TabularInlinePaginated):
     model = Estate
     readonly_fields = ('title', 'size', 'link',
                        'neighbourhood', 'consultant', 'agency')
     raw_id_fields = ('neighbourhood', 'consultant', 'agency')
-    list_per_page = 10
+    per_page = 10
     show_change_link = True
     extra = 0
 
