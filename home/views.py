@@ -311,6 +311,7 @@ def get_ads_of_a_neighbourhood():
         "json_schema": {
             "category": {"value": "real-estate"},
             "sort": {"value": "sort_date"},
+            "districts":{"vacancies":["40","1024","266","306","360","42","43","46","47","48","52","53","54","55","56","61","62","64","65","66","67","68","70","71","85","931","943"]},
             "cities": ["1"],
             "user_type": {"value": "مشاور املاک"},
         },
@@ -377,6 +378,7 @@ def unlimited_get_ads_of_a_neighbourhood():
         "json_schema": {
             "category": {"value": "real-estate"},
             "sort": {"value": "sort_date"},
+            "districts":{"vacancies":["40","1024","266","306","360","42","43","46","47","48","52","53","54","55","56","61","62","64","65","66","67","68","70","71","85","931","943"]},
             "cities": ["1"],
             "user_type": {"value": "مشاور املاک"},
         },
