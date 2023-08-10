@@ -197,7 +197,7 @@ class ConsultantAdmin(ExportActionMixin, admin.ModelAdmin):
 
 @admin.register(Estate)
 class EstateAdmin(admin.ModelAdmin):
-    search_fields = ('title', 'consultant__name', 'agency')
+    search_fields = ('title', 'consultant__name', 'agency__title')
     list_display = ('consultant', 'title', 'size')
     list_filter = (SizeFilter, 'consultant')
 
