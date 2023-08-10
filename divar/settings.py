@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'import_export',
 
     # 'django_admin_inline_paginator',
-    "debug_toolbar"
+    # "debug_toolbar"
 ]
 
 MIDDLEWARE = [
@@ -134,9 +134,9 @@ ADMIN_REORDER = (
     ('home', ('Consultant', 'Operation', 'Estate', 'Neighbourhood', 'Agency')),
 )
 
-INTERNAL_IPS = [
-    # ...
-    "127.0.0.1",
-    "localhost",
-    # ...
-]
+# INTERNAL_IPS = [
+#     # ...
+#     "127.0.0.1",
+#     "localhost",
+#     # ...
+# ]
