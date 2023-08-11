@@ -14,7 +14,9 @@ from django.utils import timezone
 from subprocess import run, TimeoutExpired
 from json import loads
 from random import randint
+from logging import Logger, getLogger
 
+logger = getLogger('django')
 
 sc = SizeClassification.objects.filter(id__lte=3)
 if sc.count() != 3:
