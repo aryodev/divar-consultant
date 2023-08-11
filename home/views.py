@@ -490,7 +490,7 @@ def unlimited_get_consultant_link_from_ads(ads):
 
 
 def get_consultant_information(links):
-    global number_of_requests
+    global number_of_requests, result_message
 
     info = {}
     for link in links:
@@ -513,6 +513,13 @@ def get_consultant_information(links):
 
         res = post_res(url, json={'request_data': {'slug': agent}, 'specification': {
             'tab_identifier': 'AGENT_INFO', 'filter_data': {}}})
+
+        try:
+            res.json()
+        except:
+            result_message += f'''
+            Error --> res.json() --> line 521 - {url} 
+            '''
 
         if not info.get(agent):
             for item in res.json()['page']['widget_list']:
