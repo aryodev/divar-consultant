@@ -139,3 +139,22 @@ INTERNAL_IPS = [
     "localhost",
     # ...
 ]
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'main': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'django-log/main-debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['main'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
