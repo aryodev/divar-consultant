@@ -41,6 +41,8 @@ class HomeView(View):
             res = run(command, capture_output=True, text=True, timeout=0.2)
         except TimeoutExpired:
             messages.success(request, 'error timeout !!!')
+            return render(request, 'home/home.html', {'unlimited_status': 'We have A Error, please contact to owner'})
+
         res = loads(res.stdout)
 
         if res['message'] == 'After Scrap currently page stopped':
