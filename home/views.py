@@ -655,7 +655,7 @@ def get_ads_information(links):
 
         if agency:
             if len(agency) == 2 and agency[0] != 'نمایش':
-                agency = agency[0]
+                agency = agency[1]
                 result[ads_agent]['agency'] = agency.text
                 result[ads_agent]['agency_link'] = 'https://divar.ir' + \
                     agency.attrs['href']
