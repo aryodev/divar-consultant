@@ -65,6 +65,8 @@ class ConsultantInline(admin.StackedInline):
     extra = 0
     verbose_name_plural = 'مشاورین'
     verbose_name = 'مشاور'
+    raw_id_fields = ('consultant',)
+
     # fields = ('consultant_name', )
     # readonly_fields = ('consultant_name', )
 
