@@ -38,7 +38,7 @@ class HomeView(View):
         # return redirect('admin/')
         command = ['curl', 'localhost:8000/unlimited-search/?stop=status']
         try:
-            res = run(command, capture_output=True, text=True, timeout=0.2)
+            res = run(command, capture_output=True, text=True, timeout=0.5)
         except TimeoutExpired:
             messages.success(request, 'error timeout !!!')
             return render(request, 'home/home.html', {'unlimited_status': 'We have A Error, please contact to owner'})

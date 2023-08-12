@@ -1,6 +1,7 @@
 divar.html
 db.sqlite3
 db.sqlite3-journal
+django-log/
 # Django #
 *.log
 *.pot
