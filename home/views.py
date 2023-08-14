@@ -41,7 +41,7 @@ class HomeView(View):
             res = run(command, capture_output=True, text=True, timeout=0.5)
         except TimeoutExpired:
             messages.success(request, 'error timeout !!!')
-            return render(request, 'home/home.html', {'unlimited_status': 'We have A Error, please contact to owner'})
+            return render(request, 'home/home.html', {'unlimited_status': 'please try again later'})
 
         res = loads(res.stdout)
 
@@ -513,18 +513,21 @@ def get_consultant_information(links):
 
         number_of_requests += 1
 
-        res = post_res(url, json={'request_data': {'slug': agent}, 'specification': {
-            'tab_identifier': 'AGENT_INFO', 'filter_data': {}}})
+        def try_json_decode():
+            try:
+                res = post_res(url, json={'request_data': {'slug': agent}, 'specification': {
+                    'tab_identifier': 'AGENT_INFO', 'filter_data': {}}})
+                return res.json()
+            except:
+                result_message += f'''
+                Error --> res.json() --> line 521 - {url} 
+                '''
+                return try_json_decode()
 
-        try:
-            res.json()
-        except:
-            result_message += f'''
-            Error --> res.json() --> line 521 - {url} 
-            '''
+        json_res = try_json_decode()
 
         if not info.get(agent):
-            for item in res.json()['page']['widget_list']:
+            for item in json_res['page']['widget_list']:
                 if item.get('widget_type') == 'LEGEND_TITLE_ROW':
 
                     if info.get(agent):
