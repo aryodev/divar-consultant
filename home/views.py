@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from time import sleep, time
 from .models import Consultant, Estate, Neighbourhood, SizeClassification, Agency, Operation
 from django.contrib import messages
-from requests.exceptions import ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError
+from requests.exceptions import ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError
 from random import randint
 from fake_useragent import UserAgent
 from traceback import format_exc
@@ -249,7 +249,7 @@ def get_res(link):
 
     try:
         res = session.get(link, timeout=3)
-    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError):
         sleep(1)
         return get_res(link)
 
@@ -299,7 +299,7 @@ def post_res(link, json=None):
         res = session.post(link, json=json, timeout=3) if json else session.post(
             link, timeout=3)
 
-    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError):
         sleep(1)
         return post_res(link, json)
 
@@ -505,7 +505,7 @@ def get_consultant_information(links):
                 session.options(url, headers={
                     'Access-Control-Request-Headers': 'content-type', 'Access-Control-Request-Method': 'POST'},
                     timeout=3)
-            except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+            except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError):
                 sleep(1)
                 return res_options()
 
