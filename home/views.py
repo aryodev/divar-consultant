@@ -654,7 +654,13 @@ def get_ads_information(links):
             'a', class_='kt-unexpandable-row__action kt-text-truncate')
 
         if agency:
-            if len(agency) == 2 and agency[0] != 'نمایش':
+            if len(agency) == 2 and agency[0].text != 'نمایش':
+                agency = agency[0]
+                result[ads_agent]['agency'] = agency.text
+                result[ads_agent]['agency_link'] = 'https://divar.ir' + \
+                    agency.attrs['href']
+
+            elif len(agency) == 2 and agency[0].text == 'نمایش':
                 agency = agency[1]
                 result[ads_agent]['agency'] = agency.text
                 result[ads_agent]['agency_link'] = 'https://divar.ir' + \
@@ -666,7 +672,7 @@ def get_ads_information(links):
                 result[ads_agent]['agency_link'] = 'https://divar.ir' + \
                     agency.attrs['href']
 
-            elif len(agency) > 2 and agency[0].text != 'نمایش':
+            else:
                 print(
                     f'len of consultant and agency grater than 2\nlink: {link}\nagency: {agency}')
                 result_message += f'''
