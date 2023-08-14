@@ -36,7 +36,7 @@ class HomeView(View):
 
     def get(self, request, *args, **kwargs):
         # return redirect('admin/')
-        command = ['curl', 'localhost:8000/unlimited-search/?stop=status']
+        command = ['curl', 'localhost:1000/unlimited-search/?stop=status']
         try:
             res = run(command, capture_output=True, text=True, timeout=0.5)
         except TimeoutExpired:
@@ -139,7 +139,7 @@ class SearchView(View):
 
 class EnterSearchCommand(View):
     def get(self, request, *args, **kwargs):
-        command = ['curl', 'localhost:8000/unlimited-search/']
+        command = ['curl', 'localhost:1000/unlimited-search/']
         try:
             res = run(command, timeout=0.2, capture_output=True, text=True)
         except TimeoutExpired:
@@ -157,7 +157,7 @@ class EnterSearchCommand(View):
 
 class EnterStopSearchCommand(View):
     def get(self, request, *args, **kwargs):
-        command = ['curl', 'localhost:8000/unlimited-search/?stop=true']
+        command = ['curl', 'localhost:1000/unlimited-search/?stop=true']
 
         res = run(command, capture_output=True, text=True)
         res = loads(res.stdout)
