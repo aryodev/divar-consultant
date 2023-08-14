@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from time import sleep, time
 from .models import Consultant, Estate, Neighbourhood, SizeClassification, Agency, Operation
 from django.contrib import messages
-from requests.exceptions import ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError
+from requests.exceptions import ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError
 from random import randint
 from fake_useragent import UserAgent
 from traceback import format_exc
@@ -14,7 +14,7 @@ from django.utils import timezone
 from subprocess import run, TimeoutExpired
 from json import loads
 from random import randint
-from logging import Logger, getLogger
+from logging import getLogger
 
 logger = getLogger('django')
 
@@ -36,7 +36,7 @@ class HomeView(View):
 
     def get(self, request, *args, **kwargs):
         # return redirect('admin/')
-        command = ['curl', 'localhost:1000/unlimited-search/?stop=status']
+        command = ['curl', 'localhost:8000/unlimited-search/?stop=status']
         try:
             res = run(command, capture_output=True, text=True, timeout=0.5)
         except TimeoutExpired:
@@ -139,7 +139,7 @@ class SearchView(View):
 
 class EnterSearchCommand(View):
     def get(self, request, *args, **kwargs):
-        command = ['curl', 'localhost:1000/unlimited-search/']
+        command = ['curl', 'localhost:8000/unlimited-search/']
         try:
             res = run(command, timeout=0.2, capture_output=True, text=True)
         except TimeoutExpired:
@@ -157,7 +157,7 @@ class EnterSearchCommand(View):
 
 class EnterStopSearchCommand(View):
     def get(self, request, *args, **kwargs):
-        command = ['curl', 'localhost:1000/unlimited-search/?stop=true']
+        command = ['curl', 'localhost:8000/unlimited-search/?stop=true']
 
         res = run(command, capture_output=True, text=True)
         res = loads(res.stdout)
@@ -249,7 +249,7 @@ def get_res(link):
 
     try:
         res = session.get(link, timeout=3)
-    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError):
         sleep(1)
         return get_res(link)
 
@@ -299,7 +299,7 @@ def post_res(link, json=None):
         res = session.post(link, json=json, timeout=3) if json else session.post(
             link, timeout=3)
 
-    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+    except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError):
         sleep(1)
         return post_res(link, json)
 
@@ -505,7 +505,7 @@ def get_consultant_information(links):
                 session.options(url, headers={
                     'Access-Control-Request-Headers': 'content-type', 'Access-Control-Request-Method': 'POST'},
                     timeout=3)
-            except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError):
+            except (ConnectTimeout, Timeout, ReadTimeout, ConnectionError, SSLError, ChunkedEncodingError):
                 sleep(1)
                 return res_options()
 
