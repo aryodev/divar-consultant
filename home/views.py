@@ -43,7 +43,12 @@ class HomeView(View):
             messages.success(request, 'error timeout !!!')
             return render(request, 'home/home.html', {'unlimited_status': 'please try again later'})
 
-        res = loads(res.stdout)
+        if res.stdout:
+            res = loads(res.stdout)
+        else:
+            messages.success(request, 'res.stdout is None !')
+            unlimited_status = 'Unlimited Scrap: Does Not Running'
+            return render(request, 'home/home.html', {'unlimited_status': unlimited_status})
 
         if res['message'] == 'After Scrap currently page stopped':
             unlimited_status = 'Unlimited Scrap: Already Running'
@@ -517,7 +522,18 @@ def get_consultant_information(links):
             try:
                 res = post_res(url, json={'request_data': {'slug': agent}, 'specification': {
                     'tab_identifier': 'AGENT_INFO', 'filter_data': {}}})
-                return res.json()
+                json_res = res.json()
+                try:
+                    json_res['page']['widget_list']
+                except:
+                    result_message += f'''
+                    ----------------------------
+                    Error json_res --> res.json() --> line 521 - {url}
+                    {json_res}
+                    ----------------------------
+                    '''
+                    print(result_message)
+                return json_res
             except:
                 result_message += f'''
                 Error --> res.json() --> line 521 - {url} 
@@ -657,7 +673,10 @@ def get_ads_information(links):
             'a', class_='kt-unexpandable-row__action kt-text-truncate')
 
         if agency:
-            if len(agency) == 2 and agency[0].text != 'نمایش':
+            if len(agency) == 1:
+                pass
+
+            elif len(agency) == 2 and agency[0].text != 'نمایش':
                 agency = agency[0]
                 result[ads_agent]['agency'] = agency.text
                 result[ads_agent]['agency_link'] = 'https://divar.ir' + \
@@ -814,7 +833,8 @@ def submit_consultant_data_to_db(agent, info):
 
                 agency.consultants.add(consultant)
 
-        consultant.agencies.add(*agencies)
+        if agencies:
+            consultant.agencies.add(*agencies)
         consultant.scope_of_activity.add(*neighbourhoods)
 
         size_classification = SizeClassification.objects.filter(
