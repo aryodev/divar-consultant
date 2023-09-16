@@ -440,7 +440,6 @@ def unlimited_get_ads_of_a_neighbourhood():
                 suggestions.append(link)
 
         data['last_post_date'] = last_post_date
-        currently_page_number += 1
 
         suggestions = get_good_urls(suggestions)
         print(f'Page {currently_page_number}: suggestions were taken')
@@ -455,6 +454,7 @@ def unlimited_get_ads_of_a_neighbourhood():
             f'Page {currently_page_number}: scrap completed' + '\n')
 
         suggestions.clear()
+        currently_page_number += 1
 
     return True
 
@@ -519,6 +519,7 @@ def get_consultant_information(links):
         number_of_requests += 1
 
         def try_json_decode():
+            global result_message
             try:
                 res = post_res(url, json={'request_data': {'slug': agent}, 'specification': {
                     'tab_identifier': 'AGENT_INFO', 'filter_data': {}}})
